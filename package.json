@@ -1,0 +1,26 @@
+{
+  "name": "amazon-quick-figma-connector",
+  "version": "1.0.0",
+  "description": "Figma MCP proxy for Amazon Quick Suite",
+  "bin": {
+    "app": "bin/app.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "watch": "tsc -w",
+    "cdk": "cdk",
+    "deploy": "cdk deploy --require-approval never",
+    "diff": "cdk diff",
+    "destroy": "cdk destroy"
+  },
+  "devDependencies": {
+    "@types/node": "22.7.9",
+    "aws-cdk": "2.1027.0",
+    "ts-node": "^10.9.2",
+    "typescript": "5.6.3"
+  },
+  "dependencies": {
+    "aws-cdk-lib": "2.221.0",
+    "constructs": "10.4.2"
+  }
+}
