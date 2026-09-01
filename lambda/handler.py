@@ -299,6 +299,65 @@ TOOLS = [
         "_path": "/files/{file_key}/variables/local",
         "_scope": "file_variables:read",
     },
+    {
+        "name": "figma_create_dev_resource",
+        "description": (
+            "Attach a link to a specific layer or frame in a Figma file -- for "
+            "example a Jira ticket, pull request, or spec page. This is how to "
+            "connect a design to the work tracking it, and the link is visible "
+            "to anyone opening the file in Dev Mode. "
+            "Requires a node_id identifying the layer: call figma_get_file with "
+            "depth 1 or 2 first to list the frames and their node IDs, then pass "
+            "the chosen one here."
+        ),
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "file_key": {
+                    "type": "string",
+                    "description": "The Figma file key from the file's URL.",
+                },
+                "node_id": {
+                    "type": "string",
+                    "description": (
+                        "The ID of the layer or frame to attach the link to, "
+                        "from figma_get_file. Looks like '1:23'."
+                    ),
+                },
+                "name": {
+                    "type": "string",
+                    "description": "Label shown for the link, e.g. the ticket key.",
+                },
+                "url": {"type": "string", "description": "The URL to link to."},
+            },
+            "required": ["file_key", "node_id", "name", "url"],
+        },
+        "_method": "POST",
+        "_path": "/dev_resources",
+        "_body": ["file_key", "node_id", "name", "url"],
+        "_body_wrap": "dev_resources",
+        "_scope": "file_dev_resources:write",
+    },
+    {
+        "name": "figma_delete_dev_resource",
+        "description": (
+            "Delete a dev resource link from a Figma file. Get the resource ID "
+            "from figma_get_dev_resources."
+        ),
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "dev_resource_id": {
+                    "type": "string",
+                    "description": "The dev resource ID, from figma_get_dev_resources.",
+                }
+            },
+            "required": ["dev_resource_id"],
+        },
+        "_method": "DELETE",
+        "_path": "/dev_resources/{dev_resource_id}",
+        "_scope": "file_dev_resources:write",
+    },
 ]
 
 PUBLIC_TOOLS = [
@@ -513,6 +572,14 @@ def handle_mcp(rpc, token):
 
         query = {k: args[k] for k in tool.get("_query", []) if args.get(k) is not None}
         body = {k: args[k] for k in tool.get("_body", []) if args.get(k) is not None}
+
+        # Some Figma endpoints take a batch array rather than a flat object --
+        # POST /dev_resources expects {"dev_resources": [ {...} ]}. Tools that
+        # need that shape declare _body_wrap and we wrap the single item here,
+        # so the tool schema stays flat and easy for a model to fill in.
+        wrap = tool.get("_body_wrap")
+        if wrap and body:
+            body = {wrap: [body]}
 
         status, parsed = call_figma(
             tool["_method"], path, token, query=query or None, payload=body or None

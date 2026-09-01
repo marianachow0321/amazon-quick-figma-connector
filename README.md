@@ -78,6 +78,8 @@ Scope-to-tool mapping:
 | `figma_get_file_components` | `library_content:read` |
 | `figma_get_file_styles` | `library_content:read` |
 | `figma_get_file_variables` | `file_variables:read` (Figma Enterprise only) |
+| `figma_create_dev_resource` | `file_dev_resources:write` |
+| `figma_delete_dev_resource` | `file_dev_resources:write` |
 
 Every scope in the deployed string is used by a tool, and every tool's scope is
 in the string. Keep it that way — a scope with no tool behind it only widens the
@@ -209,6 +211,8 @@ Then click **Sign in** on the connector and ask *"who am I in Figma"*.
 | `figma_get_file_components` | `GET /files/{file_key}/components` — published design system components |
 | `figma_get_file_styles` | `GET /files/{file_key}/styles` — colours, text styles, effects, grids |
 | `figma_get_file_variables` | `GET /files/{file_key}/variables/local` — design tokens, **Enterprise plans only** |
+| `figma_create_dev_resource` | `POST /dev_resources` — attach a link to a layer |
+| `figma_delete_dev_resource` | `DELETE /dev_resources/{dev_resource_id}` |
 
 ### Finding a file without a file key
 
@@ -227,6 +231,36 @@ the user must supply a file key directly.
 
 Prefer `figma_get_file_metadata` over `figma_get_file` when the question is about
 a file's name or when it last changed — a full layer tree can be megabytes.
+
+### What can and cannot be written
+
+Figma's REST API cannot modify design content. No creating frames, editing
+layers, changing colours, or moving components — that is the Plugin API, which
+runs inside the Figma app and is not reachable over REST. No proxy or MCP server
+changes this.
+
+What this connector can write:
+
+| Capability | Tool |
+|---|---|
+| Post a comment on a file | `figma_post_comment` |
+| Attach a link to a layer (Jira ticket, PR, spec) | `figma_create_dev_resource` |
+| Remove such a link | `figma_delete_dev_resource` |
+
+Dev resources are the more useful write path: they appear in Dev Mode against a
+specific frame, so a design ends up durably linked to the work tracking it —
+which chains directly with a Jira or Confluence connector.
+
+Creating one needs a `node_id`, so the sequence is:
+
+```
+figma_get_file(file_key, depth=1)   → frames and their node IDs
+figma_create_dev_resource(file_key, node_id, name, url)
+```
+
+The Figma endpoint takes a batch array (`{"dev_resources": [ ... ]}`). Tools
+declare `_body_wrap` and the handler wraps the single item, so the tool schema
+stays flat for the model to fill in.
 
 ## Notes
 
