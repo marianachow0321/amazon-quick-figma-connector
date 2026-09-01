@@ -466,6 +466,29 @@ def handle_oauth_token(event):
 
     if status >= 400:
         log(f"oauth/token FAILED status={status} body={text[:300]}")
+    else:
+        # OAuth allows the server to grant FEWER scopes than requested and still
+        # return 200. Figma does this when the app version is not approved for a
+        # scope: sign-in succeeds, then the tool 403s -- undiagnosable without
+        # seeing what was actually granted. Scope names are not secrets and no
+        # token material is logged here.
+        try:
+            granted = (json.loads(text) or {}).get("scope")
+        except Exception:
+            granted = None
+        if granted is None:
+            log("oauth/token granted scopes: NOT REPORTED in token response")
+        else:
+            want = set(FIGMA_SCOPES.split())
+            got = set(str(granted).split())
+            log(f"oauth/token granted scopes: {' '.join(sorted(got)) or '(none)'}")
+            missing = want - got
+            if missing:
+                log(
+                    "oauth/token WARNING partial grant -- requested but NOT granted: "
+                    f"{' '.join(sorted(missing))} -- tools needing these will 403; "
+                    "the Figma app version is likely not approved for them"
+                )
 
     return {
         "statusCode": status,
