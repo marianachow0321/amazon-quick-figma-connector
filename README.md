@@ -95,6 +95,38 @@ replace them.
 Scopes grant *capability*, not *access*. Even with `file_content:read`, a user
 only reads files their own Figma account can already open.
 
+### Finding out which scopes a token actually has
+
+Figma does **not** report granted scopes in its token response — it returns
+`200` and stays silent, so a partially-granted token looks identical to a fully
+granted one until a tool 403s. But Figma *does* name the token's scopes in its
+403 messages:
+
+```
+Invalid scope: ["file_content:read"]. This endpoint requires the
+file_read or files:read or file_metadata:read scope.
+```
+
+The bracketed list is what the token **has**. `scripts/check-figma-scopes.sh`
+exploits that: it calls one endpoint per tool and reports which will work.
+
+```bash
+export FIGMA_TOKEN='figd_...'        # PAT, or an OAuth access token
+./scripts/check-figma-scopes.sh <file_key> [team_id]
+```
+
+- Pass the token by **environment variable**, never as an argument — arguments
+  land in shell history.
+- A `figd_` PAT is sent as `X-Figma-Token`; anything else as
+  `Authorization: Bearer`. Figma rejects each in the other's header.
+- Write operations are listed but never called.
+- `429` is reported separately from `403`. Rate limiting is inconclusive, not a
+  permission problem, and conflating the two sends you looking in the wrong
+  place. Set `DELAY=2` if you keep tripping it.
+
+It works on OAuth tokens too, which is the real use: capture one from the proxy
+and see exactly what Figma approved for the app.
+
 ### Adding a scope after the first deploy
 
 The proxy injects the scope string into the authorization request, because Quick

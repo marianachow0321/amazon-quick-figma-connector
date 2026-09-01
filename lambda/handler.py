@@ -635,6 +635,7 @@ def handle_mcp(rpc, token):
         name = params.get("name")
         args = params.get("arguments") or {}
         tool = TOOLS_BY_NAME.get(name)
+        log(f"tools/call {name} args={sorted(args.keys())}")
         if not tool:
             return _result(rid, _tool_text(f"Unknown tool: {name}", True))
 
@@ -664,6 +665,7 @@ def handle_mcp(rpc, token):
         status, parsed = call_figma(
             tool["_method"], path, token, query=query or None, payload=body or None
         )
+        log(f"tools/call {name} -> Figma {tool['_method']} {tool['_path']} status={status}")
 
         if status >= 400:
             msg = parsed.get("err") or parsed.get("message") or json.dumps(parsed)
@@ -692,6 +694,11 @@ def handle_mcp(rpc, token):
                         " -- the Figma OAuth app may not have this scope approved. "
                         "Check the app's scope list and submitted version."
                     )
+            # This text is returned to the MCP client. Log it too -- otherwise the
+            # only copy of the diagnosis lives in the client's error payload and
+            # never reaches CloudWatch, which makes failures hard to investigate
+            # after the fact.
+            log(f"tools/call {name} FAILED status={status} msg={str(msg)[:200]}")
             return _result(rid, _tool_text(f"Figma returned {status}: {msg}{hint}", True))
 
         return _result(rid, _tool_text(json.dumps(parsed)))
