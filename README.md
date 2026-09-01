@@ -75,6 +75,44 @@ Copy scope identifiers verbatim from Figma's app scope picker — the UI shows p
 
 ## Deploy
 
+### From AWS CloudShell
+
+The shortest path — no local toolchain, and credentials are already in place.
+CloudShell ships git, Node, and Python, and runs as your console identity.
+
+Open CloudShell in the **same region** you want the stack in. The region
+selector in the console header sets the deployment region; there is no separate
+flag below.
+
+```bash
+git clone https://github.com/marianachow0321/amazon-quick-figma-connector.git
+cd amazon-quick-figma-connector
+npm install
+npx cdk bootstrap        # first time only, per account+region
+npx cdk deploy --require-approval never \
+  -c figmaScopes="current_user:read file_content:read file_comments:read file_comments:write"
+```
+
+Copy the `McpEndpoint` output — it is the MCP server endpoint for the Quick
+connector.
+
+Notes specific to CloudShell:
+
+* **Home directory persists (1 GB); everything else does not.** Clone into
+  `~` so the checkout survives a session timeout. `node_modules` is a few
+  hundred MB, which fits, but if you hit the quota run
+  `rm -rf ~/.npm ~/amazon-quick-figma-connector/node_modules` and reinstall.
+* **Sessions idle out after ~20 minutes.** `cdk deploy` here takes 2-3 minutes
+  so this rarely matters, but do not walk away mid-bootstrap.
+* **Your console role is the deploying identity.** It needs CloudFormation,
+  Lambda, API Gateway, IAM, and S3 permissions. An admin role is simplest;
+  a scoped role must be able to create IAM roles, since CDK creates the Lambda
+  execution role.
+* **No Docker required.** The Lambda asset is plain Python, bundled without
+  container builds — which matters because CloudShell has no Docker daemon.
+
+### From a local machine
+
 ```bash
 npm install
 npx cdk bootstrap        # first time only
