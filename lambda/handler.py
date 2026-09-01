@@ -670,24 +670,49 @@ def handle_mcp(rpc, token):
         if status >= 400:
             msg = parsed.get("err") or parsed.get("message") or json.dumps(parsed)
             hint = ""
+
+            # 429 is a QUOTA problem, not a permission problem, and Figma's quotas
+            # are brutal on lower plans: GET file is Tier 1, which allows only
+            # 20 requests per MONTH on a Starter plan. Saying so explicitly stops
+            # this being mistaken for a scope or access failure -- which it was,
+            # repeatedly, before this message existed.
+            if status == 429:
+                hint = (
+                    " -- this is Figma's RATE LIMIT, not a permissions problem. "
+                    "Figma limits by endpoint tier, seat type, and the plan of the "
+                    "team owning the file. On a Starter plan, reading file contents "
+                    "is capped at roughly 20 requests per MONTH, so the quota can be "
+                    "exhausted for days. Retry later, or use a file in a team on a "
+                    "paid plan with a Full or Dev seat."
+                )
+                return _result(rid, _tool_text(f"Figma returned 429: {msg}{hint}", True))
+
             if status in (401, 403):
                 needed = tool.get("_scope")
                 if needed:
-                    granted = needed in FIGMA_SCOPES.split()
-                    if granted:
+                    # NOTE: this only tells us whether the proxy ASKED for the
+                    # scope. Figma does not report which scopes it granted (the
+                    # token response has no `scope` field), so the proxy cannot
+                    # know what the token actually carries.
+                    requested = needed in FIGMA_SCOPES.split()
+                    if requested:
                         hint = (
-                            f" -- this tool needs the '{needed}' scope, which IS in "
-                            "this deployment's scope string, so the likely cause is "
-                            "that the Figma app version requesting it has not been "
-                            "approved yet, or the signed-in user lacks access to "
-                            "this file. Scopes never override per-user file access."
+                            f" -- this tool needs the '{needed}' scope. This "
+                            "deployment does REQUEST that scope, but Figma does not "
+                            "report which scopes it actually granted, so the token "
+                            "may not carry it. Likely causes, in order: the Figma "
+                            "app version requesting it is not approved yet; the "
+                            "monthly API quota for this endpoint is exhausted (GET "
+                            "file is Tier 1 -- only 20/month on a Starter plan); or "
+                            "the signed-in user cannot access this file. Scopes "
+                            "never override per-user file access."
                         )
                     else:
                         hint = (
-                            f" -- this tool needs the '{needed}' scope, which is NOT "
-                            "in this deployment's scope string. Add it to the Figma "
-                            "app, submit the app version for review, then redeploy "
-                            f"with -c figmaScopes=\"{FIGMA_SCOPES} {needed}\"."
+                            f" -- this tool needs the '{needed}' scope, which this "
+                            "deployment does NOT request. Add it to the Figma app, "
+                            "submit the app version for review, and once approved "
+                            "add it to context.figmaScopes in cdk.json and redeploy."
                         )
                 else:
                     hint = (

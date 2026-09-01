@@ -95,6 +95,40 @@ replace them.
 Scopes grant *capability*, not *access*. Even with `file_content:read`, a user
 only reads files their own Figma account can already open.
 
+### Figma's API quotas will bite you before scopes do
+
+Figma rate-limits by **endpoint tier**, **seat type**, and **the plan of the team
+that owns the file** — not by your account's plan. The numbers matter because the
+lowest one is severe:
+
+| Tier | Tools here | Starter | Professional | Organization | Enterprise |
+|---|---|---|---|---|---|
+| 1 | `figma_get_file` | **20 / month** | 10/min | 15/min | 20/min |
+| 2 | comments, dev resources, versions, projects, folders | 5/min | 25/min | 50/min | 100/min |
+| 3 | file metadata, components, styles, `/me` | 10/min | 50/min | 100/min | 150/min |
+
+The per-minute figures require a **Full or Dev seat**. View and Collab seats get
+the Starter numbers on *every* plan, including Enterprise.
+
+Consequences worth knowing before you demo this:
+
+- **Reading file contents is capped at 20 calls per month on a free plan**, and
+  Figma's docs note the real limit may be lower under load. A handful of
+  questions from one user exhausts it, and `Retry-After` then comes back in
+  *days* — 398,977 seconds (4.6 days) in one observed case.
+- The tiers are **separate buckets**. Exhausting Tier 1 leaves Tier 3 working,
+  which is why file metadata can succeed while file content fails. That looks
+  like a scope problem and is not.
+- Limits follow the **file's team**, not your seat. A Full seat on Professional
+  still gets Starter limits for a file sitting in a Starter team or in personal
+  Drafts.
+- `429` responses carry `X-Figma-Plan-Tier`, `X-Figma-Rate-Limit-Type`
+  (`low` for View/Collab, `high` for Full/Dev) and `X-Figma-Upgrade-Link`. Those
+  headers tell you which of the three factors is binding.
+
+An agentic integration is therefore not viable on a Starter plan. This is a
+Figma commercial constraint, not something the proxy can work around.
+
 ### Finding out which scopes a token actually has
 
 Figma does **not** report granted scopes in its token response — it returns
