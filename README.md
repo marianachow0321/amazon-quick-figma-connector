@@ -123,9 +123,10 @@ git clone https://github.com/marianachow0321/amazon-quick-figma-connector.git
 cd amazon-quick-figma-connector
 npm install
 npx cdk bootstrap        # first time only, per account+region
-npx cdk deploy --require-approval never \
-  -c figmaScopes="current_user:read file_content:read file_comments:read file_comments:write"
+npx cdk deploy --require-approval never
 ```
+
+Scopes come from `cdk.json` — see [Where the scope string lives](#where-the-scope-string-lives).
 
 Copy the `McpEndpoint` output — it is the MCP server endpoint for the Quick
 connector.
@@ -153,11 +154,25 @@ npx cdk bootstrap        # first time only
 npx cdk deploy --require-approval never
 ```
 
-To request more than the default scope:
+### Where the scope string lives
+
+The requested scopes are **persisted in `cdk.json`** under `context.figmaScopes`,
+so a bare `cdk deploy` redeploys the same scopes it already had.
+
+This matters: CDK context flags are not remembered between deploys. Before the
+value was moved into `cdk.json`, running `cdk deploy` without
+`-c figmaScopes="..."` silently fell back to `current_user:read` — narrowing a
+working four-scope deployment to one and breaking three tools, with no error.
+
+To change scopes, edit `cdk.json` and commit, so the deployed state is visible in
+version control. A one-off override still works:
 
 ```bash
 npx cdk deploy -c figmaScopes="current_user:read file_content:read" --require-approval never
 ```
+
+but it will be lost on the next bare deploy, which is exactly the trap described
+above. Prefer editing `cdk.json`.
 
 The MCP endpoint and Quick settings are printed as stack outputs.
 
