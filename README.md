@@ -67,11 +67,37 @@ Scope-to-tool mapping:
 | Tool | Scope needed |
 |---|---|
 | `figma_get_me` | `current_user:read` |
-| `figma_get_file` | read file contents |
-| `figma_get_file_comments` | read comments |
-| `figma_post_comment` | write comments |
+| `figma_get_file` | `file_content:read` |
+| `figma_get_file_comments` | `file_comments:read` |
+| `figma_post_comment` | `file_comments:write` |
+| `figma_get_file_metadata` | `file_metadata:read` |
+| `figma_list_projects` | `folders:read` |
+| `figma_list_project_files` | `folders:read` |
+| `figma_get_file_versions` | `file_versions:read` |
 
-Copy scope identifiers verbatim from Figma's app scope picker — the UI shows prose descriptions, and guessing the identifiers wastes review cycles.
+Copy scope identifiers verbatim from Figma's app scope picker — the UI shows
+prose descriptions, and guessing the identifiers wastes review cycles. Note that
+`files:read` and `file_read` are **deprecated**; the granular scopes above
+replace them.
+
+Scopes grant *capability*, not *access*. Even with `file_content:read`, a user
+only reads files their own Figma account can already open.
+
+### Adding a scope after the first deploy
+
+The proxy injects the scope string into the authorization request, because Quick
+does not send one. So an unapproved scope in that string breaks sign-in for
+**every** tool with `Invalid scopes for app` — not just the new one.
+
+Roll changes out in this order:
+
+1. Deploy the code for the new tools **without** changing `figmaScopes`. The new
+   tools appear and return a `403` naming the scope they need. Existing tools
+   keep working.
+2. Add the scope in Figma and **submit the app version** for review.
+3. Once approved, redeploy with the scope appended to `figmaScopes`.
+
+Doing 3 before 2 completes takes the whole connector down.
 
 ## Deploy
 
@@ -122,7 +148,7 @@ npx cdk deploy --require-approval never
 To request more than the default scope:
 
 ```bash
-npx cdk deploy -c figmaScopes="current_user:read files:read" --require-approval never
+npx cdk deploy -c figmaScopes="current_user:read file_content:read" --require-approval never
 ```
 
 The MCP endpoint and Quick settings are printed as stack outputs.
@@ -150,8 +176,30 @@ Then click **Sign in** on the connector and ask *"who am I in Figma"*.
 |---|---|
 | `figma_get_me` | `GET /me` |
 | `figma_get_file` | `GET /files/{file_key}` — pass `depth` to keep responses small |
+| `figma_get_file_metadata` | `GET /files/{file_key}/meta` — name, thumbnail, last modified, no layer tree |
 | `figma_get_file_comments` | `GET /files/{file_key}/comments` |
 | `figma_post_comment` | `POST /files/{file_key}/comments` |
+| `figma_get_file_versions` | `GET /files/{file_key}/versions` |
+| `figma_list_projects` | `GET /teams/{team_id}/projects` |
+| `figma_list_project_files` | `GET /projects/{project_id}/files` |
+
+### Finding a file without a file key
+
+Every file-scoped tool needs a `file_key`, which users rarely have to hand. The
+discovery path is:
+
+```
+figma_list_projects(team_id)        → project IDs and names
+figma_list_project_files(id)        → file keys and names
+figma_get_file(file_key, depth=1)   → the design itself
+```
+
+The team ID comes from a team URL: in `figma.com/files/team/12345/My-Team` it is
+`12345`. Without `folders:read` approved, the first two steps return `403` and
+the user must supply a file key directly.
+
+Prefer `figma_get_file_metadata` over `figma_get_file` when the question is about
+a file's name or when it last changed — a full layer tree can be megabytes.
 
 ## Notes
 

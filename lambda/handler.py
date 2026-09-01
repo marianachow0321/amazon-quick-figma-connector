@@ -58,6 +58,7 @@ TOOLS = [
         "inputSchema": {"type": "object", "properties": {}, "required": []},
         "_method": "GET",
         "_path": "/me",
+        "_scope": "current_user:read",
     },
     {
         "name": "figma_get_file",
@@ -85,6 +86,7 @@ TOOLS = [
         "_method": "GET",
         "_path": "/files/{file_key}",
         "_query": ["depth"],
+        "_scope": "file_content:read",
     },
     {
         "name": "figma_get_file_comments",
@@ -101,6 +103,7 @@ TOOLS = [
         },
         "_method": "GET",
         "_path": "/files/{file_key}/comments",
+        "_scope": "file_comments:read",
     },
     {
         "name": "figma_post_comment",
@@ -119,6 +122,94 @@ TOOLS = [
         "_method": "POST",
         "_path": "/files/{file_key}/comments",
         "_body": ["message"],
+        "_scope": "file_comments:write",
+    },
+    {
+        "name": "figma_get_file_metadata",
+        "description": (
+            "Get a Figma file's metadata only -- name, thumbnail URL, last "
+            "modified time, editor type -- without loading the layer tree. "
+            "Much cheaper than figma_get_file. Prefer this when the question is "
+            "about a file's name, owner, or when it last changed."
+        ),
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "file_key": {
+                    "type": "string",
+                    "description": "The Figma file key from the file's URL.",
+                }
+            },
+            "required": ["file_key"],
+        },
+        "_method": "GET",
+        "_path": "/files/{file_key}/meta",
+        "_scope": "file_metadata:read",
+    },
+    {
+        "name": "figma_list_projects",
+        "description": (
+            "List the projects (folders) in a Figma team. Use this first when the "
+            "user names a design by description rather than giving a file key, "
+            "then call figma_list_project_files to find the file. The team ID is "
+            "in a team URL -- in figma.com/files/team/12345/My-Team the team ID "
+            "is 12345."
+        ),
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "team_id": {
+                    "type": "string",
+                    "description": "The Figma team ID, from a team URL.",
+                }
+            },
+            "required": ["team_id"],
+        },
+        "_method": "GET",
+        "_path": "/teams/{team_id}/projects",
+        "_scope": "folders:read",
+    },
+    {
+        "name": "figma_list_project_files",
+        "description": (
+            "List the files in a Figma project (folder), returning each file's "
+            "key and name. This is how to find a file key when the user does not "
+            "have one. Get the project ID from figma_list_projects."
+        ),
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "project_id": {
+                    "type": "string",
+                    "description": "The Figma project ID, from figma_list_projects.",
+                }
+            },
+            "required": ["project_id"],
+        },
+        "_method": "GET",
+        "_path": "/projects/{project_id}/files",
+        "_scope": "folders:read",
+    },
+    {
+        "name": "figma_get_file_versions",
+        "description": (
+            "List a Figma file's version history, with timestamps, labels, and "
+            "the user who made each version. Use for questions about what "
+            "changed and when."
+        ),
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "file_key": {
+                    "type": "string",
+                    "description": "The Figma file key from the file's URL.",
+                }
+            },
+            "required": ["file_key"],
+        },
+        "_method": "GET",
+        "_path": "/files/{file_key}/versions",
+        "_scope": "file_versions:read",
     },
 ]
 
@@ -342,11 +433,30 @@ def handle_mcp(rpc, token):
         if status >= 400:
             msg = parsed.get("err") or parsed.get("message") or json.dumps(parsed)
             hint = ""
-            if status == 403:
-                hint = (
-                    " -- the Figma OAuth app may not have this scope approved. "
-                    "Check the app's scope list and submitted version."
-                )
+            if status in (401, 403):
+                needed = tool.get("_scope")
+                if needed:
+                    granted = needed in FIGMA_SCOPES.split()
+                    if granted:
+                        hint = (
+                            f" -- this tool needs the '{needed}' scope, which IS in "
+                            "this deployment's scope string, so the likely cause is "
+                            "that the Figma app version requesting it has not been "
+                            "approved yet, or the signed-in user lacks access to "
+                            "this file. Scopes never override per-user file access."
+                        )
+                    else:
+                        hint = (
+                            f" -- this tool needs the '{needed}' scope, which is NOT "
+                            "in this deployment's scope string. Add it to the Figma "
+                            "app, submit the app version for review, then redeploy "
+                            f"with -c figmaScopes=\"{FIGMA_SCOPES} {needed}\"."
+                        )
+                else:
+                    hint = (
+                        " -- the Figma OAuth app may not have this scope approved. "
+                        "Check the app's scope list and submitted version."
+                    )
             return _result(rid, _tool_text(f"Figma returned {status}: {msg}{hint}", True))
 
         return _result(rid, _tool_text(json.dumps(parsed)))
