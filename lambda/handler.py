@@ -211,6 +211,94 @@ TOOLS = [
         "_path": "/files/{file_key}/versions",
         "_scope": "file_versions:read",
     },
+    {
+        "name": "figma_get_dev_resources",
+        "description": (
+            "List developer resources attached to a Figma file -- links that "
+            "designers have pinned to designs, typically pointing at Jira "
+            "tickets, pull requests, or documentation. Use to answer 'what work "
+            "is linked to this design' or to cross-reference a design with "
+            "tickets and code."
+        ),
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "file_key": {
+                    "type": "string",
+                    "description": "The Figma file key from the file's URL.",
+                }
+            },
+            "required": ["file_key"],
+        },
+        "_method": "GET",
+        "_path": "/files/{file_key}/dev_resources",
+        "_scope": "file_dev_resources:read",
+    },
+    {
+        "name": "figma_get_file_components",
+        "description": (
+            "List the published design system components in a Figma file, with "
+            "names, descriptions, and keys. Use for questions about whether a "
+            "component exists in the design system, or to audit which "
+            "components a file publishes."
+        ),
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "file_key": {
+                    "type": "string",
+                    "description": "The Figma file key from the file's URL.",
+                }
+            },
+            "required": ["file_key"],
+        },
+        "_method": "GET",
+        "_path": "/files/{file_key}/components",
+        "_scope": "library_content:read",
+    },
+    {
+        "name": "figma_get_file_styles",
+        "description": (
+            "List the published styles in a Figma file -- colours, text styles, "
+            "effects, and grids. Use for design system questions about "
+            "typography or the colour palette."
+        ),
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "file_key": {
+                    "type": "string",
+                    "description": "The Figma file key from the file's URL.",
+                }
+            },
+            "required": ["file_key"],
+        },
+        "_method": "GET",
+        "_path": "/files/{file_key}/styles",
+        "_scope": "library_content:read",
+    },
+    {
+        "name": "figma_get_file_variables",
+        "description": (
+            "List the local variables (design tokens) and their collections in a "
+            "Figma file -- for example spacing scales, semantic colour tokens, "
+            "and theme modes. Requires a Figma Enterprise plan; on other plans "
+            "Figma returns 403 regardless of scope."
+        ),
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "file_key": {
+                    "type": "string",
+                    "description": "The Figma file key from the file's URL.",
+                }
+            },
+            "required": ["file_key"],
+        },
+        "_method": "GET",
+        "_path": "/files/{file_key}/variables/local",
+        "_scope": "file_variables:read",
+    },
 ]
 
 PUBLIC_TOOLS = [

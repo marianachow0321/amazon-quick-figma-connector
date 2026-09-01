@@ -68,12 +68,20 @@ Scope-to-tool mapping:
 |---|---|
 | `figma_get_me` | `current_user:read` |
 | `figma_get_file` | `file_content:read` |
+| `figma_get_file_metadata` | `file_metadata:read` |
 | `figma_get_file_comments` | `file_comments:read` |
 | `figma_post_comment` | `file_comments:write` |
-| `figma_get_file_metadata` | `file_metadata:read` |
 | `figma_list_projects` | `folders:read` |
 | `figma_list_project_files` | `folders:read` |
 | `figma_get_file_versions` | `file_versions:read` |
+| `figma_get_dev_resources` | `file_dev_resources:read` |
+| `figma_get_file_components` | `library_content:read` |
+| `figma_get_file_styles` | `library_content:read` |
+| `figma_get_file_variables` | `file_variables:read` (Figma Enterprise only) |
+
+Every scope in the deployed string is used by a tool, and every tool's scope is
+in the string. Keep it that way — a scope with no tool behind it only widens the
+consent screen.
 
 Copy scope identifiers verbatim from Figma's app scope picker — the UI shows
 prose descriptions, and guessing the identifiers wastes review cycles. Note that
@@ -182,6 +190,10 @@ Then click **Sign in** on the connector and ask *"who am I in Figma"*.
 | `figma_get_file_versions` | `GET /files/{file_key}/versions` |
 | `figma_list_projects` | `GET /teams/{team_id}/projects` |
 | `figma_list_project_files` | `GET /projects/{project_id}/files` |
+| `figma_get_dev_resources` | `GET /files/{file_key}/dev_resources` — links pinned to designs, often Jira or code |
+| `figma_get_file_components` | `GET /files/{file_key}/components` — published design system components |
+| `figma_get_file_styles` | `GET /files/{file_key}/styles` — colours, text styles, effects, grids |
+| `figma_get_file_variables` | `GET /files/{file_key}/variables/local` — design tokens, **Enterprise plans only** |
 
 ### Finding a file without a file key
 
