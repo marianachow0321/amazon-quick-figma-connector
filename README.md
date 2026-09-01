@@ -80,6 +80,8 @@ Scope-to-tool mapping:
 | `figma_get_file_variables` | `file_variables:read` (Figma Enterprise only) |
 | `figma_create_dev_resource` | `file_dev_resources:write` |
 | `figma_delete_dev_resource` | `file_dev_resources:write` |
+| `figma_list_team_components` | `team_library_content:read` |
+| `figma_list_team_styles` | `team_library_content:read` |
 
 Every scope in the deployed string is used by a tool, and every tool's scope is
 in the string. Keep it that way — a scope with no tool behind it only widens the
@@ -213,6 +215,8 @@ Then click **Sign in** on the connector and ask *"who am I in Figma"*.
 | `figma_get_file_variables` | `GET /files/{file_key}/variables/local` — design tokens, **Enterprise plans only** |
 | `figma_create_dev_resource` | `POST /dev_resources` — attach a link to a layer |
 | `figma_delete_dev_resource` | `DELETE /dev_resources/{dev_resource_id}` |
+| `figma_list_team_components` | `GET /teams/{team_id}/components` — design system across a team |
+| `figma_list_team_styles` | `GET /teams/{team_id}/styles` — team palette and type scale |
 
 ### Finding a file without a file key
 
@@ -231,6 +235,13 @@ the user must supply a file key directly.
 
 Prefer `figma_get_file_metadata` over `figma_get_file` when the question is about
 a file's name or when it last changed — a full layer tree can be megabytes.
+
+### Design system questions: team library, not file
+
+A design system is normally published as a **team library**, not kept in one
+file. So for "does this component exist" or "what is our type scale", prefer
+`figma_list_team_components` and `figma_list_team_styles` over their file-level
+equivalents — the file-level tools only see what that one file publishes.
 
 ### What can and cannot be written
 

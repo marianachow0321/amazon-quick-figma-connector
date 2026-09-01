@@ -358,6 +358,63 @@ TOOLS = [
         "_path": "/dev_resources/{dev_resource_id}",
         "_scope": "file_dev_resources:write",
     },
+    {
+        "name": "figma_list_team_components",
+        "description": (
+            "List the components published in a Figma team's libraries, with "
+            "names, descriptions, and the file each comes from. This is the right "
+            "tool for design system questions -- a design system is normally "
+            "published as a team library rather than living in one file, so "
+            "prefer this over figma_get_file_components when asking whether a "
+            "component exists across the organisation. The team ID is in a team "
+            "URL: in figma.com/files/team/12345/My-Team it is 12345."
+        ),
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "team_id": {
+                    "type": "string",
+                    "description": "The Figma team ID, from a team URL.",
+                },
+                "page_size": {
+                    "type": "integer",
+                    "description": "Results per page, default 30, max 1000.",
+                },
+            },
+            "required": ["team_id"],
+        },
+        "_method": "GET",
+        "_path": "/teams/{team_id}/components",
+        "_query": ["page_size"],
+        "_scope": "team_library_content:read",
+    },
+    {
+        "name": "figma_list_team_styles",
+        "description": (
+            "List the styles published in a Figma team's libraries -- colours, "
+            "text styles, effects, and grids. Use for organisation-wide design "
+            "system questions about the palette or type scale, in preference to "
+            "figma_get_file_styles which only covers a single file."
+        ),
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "team_id": {
+                    "type": "string",
+                    "description": "The Figma team ID, from a team URL.",
+                },
+                "page_size": {
+                    "type": "integer",
+                    "description": "Results per page, default 30, max 1000.",
+                },
+            },
+            "required": ["team_id"],
+        },
+        "_method": "GET",
+        "_path": "/teams/{team_id}/styles",
+        "_query": ["page_size"],
+        "_scope": "team_library_content:read",
+    },
 ]
 
 PUBLIC_TOOLS = [
